@@ -3,7 +3,7 @@
 #include <sys/time.h>
 
 #define DataType double
-#define TPB 256
+#define TPB 32
 
 // Compute C = A * B
 __global__ void gemm(DataType *A, DataType *B, DataType *C, int numARows,
