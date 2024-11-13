@@ -39,10 +39,10 @@ int main(int argc, char **argv) {
   int numCColumns;
 
   //@@ Insert code below to read in numARows, numAColumns, numBColumns from args
-  numARows = TPB;
-  numAColumns = atoi(argv[2]);
+  numARows =  atoi(argv[2]);
+  numAColumns = atoi(argv[3]);
   numBRows = numAColumns;
-  numBColumns = atoi(argv[3]);
+  numBColumns = atoi(argv[4]);
   numCRows = numARows;
   numCColumns = numBColumns;
 
