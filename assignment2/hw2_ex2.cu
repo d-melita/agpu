@@ -39,10 +39,10 @@ int main(int argc, char **argv) {
   int numCColumns;
 
   //@@ Insert code below to read in numARows, numAColumns, numBColumns from args
-  numARows =  atoi(argv[2]);
-  numAColumns = atoi(argv[3]);
+  numARows =  atoi(argv[1]);
+  numAColumns = atoi(argv[2]);
   numBRows = numAColumns;
-  numBColumns = atoi(argv[4]);
+  numBColumns = atoi(argv[3]);
   numCRows = numARows;
   numCColumns = numBColumns;
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     for (int j = 0; j < numBColumns; j++) {
       DataType value = 0;
       for (int k = 0; k < numAColumns; k++) {
-        value += A[i * numAColumns + k] * B[k * numBColumns + j];
+        value += hostA[i * numAColumns + k] * hostB[k * numBColumns + j];
       }
       resultRef[i * numBColumns + j] = value;
     }
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < numCRows * numCColumns; i++) {
     if (fabs(hostC[i] - resultRef[i]) > 1e-6) {
       match = false;
-      printf("Mismatch at index %d: hostOutput[%d] = %f, resultRef[%d] = %f\n", i, i, hostOutput[i], i, resultRef[i]);
+      printf("Mismatch at index %d: hostOutput[%d] = %f, resultRef[%d] = %f\n", i, i, hostC[i], i, resultRef[i]);
       break;
     }
   }
