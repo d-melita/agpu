@@ -1,7 +1,6 @@
 
 #include <stdio.h>
 #include <sys/time.h>
-#include <sys/stdlib.h>
 
 #define DataType double
 #define TPB 256
@@ -32,7 +31,7 @@ int main(int argc, char **argv) {
   DataType *deviceOutput;
 
   if (argc < 2) {
-    fprintf("Invalid number of arguments. Usage: ./hw2_ex1 <inputLength>");
+    fprintf(stderr, "Invalid number of arguments. Usage: ./hw2_ex1 <inputLength>");
     return 1;
   }
   
@@ -44,7 +43,7 @@ int main(int argc, char **argv) {
   hostOutput = (DataType*)malloc(inputLength * sizeof(DataType));
   resultRef = (DataType*)malloc(inputLength * sizeof(DataType));
   
-  for (int i = 0: i < inputLength; i++) {
+  for (int i = 0; i < inputLength; i++) {
     hostInput1[i] = rand()/(DataType)RAND_MAX;
     hostInput2[i] = rand()/(DataType)RAND_MAX;
     resultRef[i] = hostInput1[i] + hostInput2[i];
