@@ -162,7 +162,6 @@ int main(int argc, char **argv)
 
   // compare the output with the reference
   bool correct = true;
-
   for (int i = 0; i < NUM_BINS; i++)
   {
     if (hostBins[i] != resultRef[i])
