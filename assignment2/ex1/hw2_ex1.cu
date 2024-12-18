@@ -73,9 +73,10 @@ int main(int argc, char **argv) {
   double elapsedCopyToHost = cpuSecond() - startCopyToHost;
 
   // Print individual timings
-  printf("Time for data copy from host to device: %f seconds\n", elapsedCopyToDevice);
-  printf("Time for CUDA kernel execution: %f seconds\n", elapsedKernel);
-  printf("Time for data copy from device to host: %f seconds\n", elapsedCopyToHost);
+  printf("Total execution time: %f seconds\n", elapsedCopyToDevice + elapsedKernel + elapsedCopyToHost);
+  printf("Time for Host to Device copy: %f seconds\n", elapsedCopyToDevice);
+  printf("Time for Kernel execution: %f seconds\n", elapsedKernel);
+  printf("Time for Device to Host copy: %f seconds\n", elapsedCopyToHost);
 
   bool match = true;
   for (int i = 0; i < inputLength; i++) {
