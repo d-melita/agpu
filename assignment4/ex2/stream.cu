@@ -22,79 +22,93 @@ double cpuSecond() {
 }
 
 int main(int argc, char **argv) {
+
+  int inputSize;
+  int segmentSize;
+
+  DataType *hostInput1;
+  DataType *hostInput2;
+  DataType *hostOutput;
+  DataType *resultRef;
+
+  DataType *deviceInput1;
+  DataType *deviceInput2;
+  DataType *deviceOutput;
+
+  // timing variables
   double totalTimeHostToDevice = 0;
   double totalTimeKernel = 0;
   double totalTimeDeviceToHost = 0;
-  if (argc < 2) {
-    fprintf(stderr, "Usage: ./hw4_ex2 <segment>\n");
+
+  if (argc < 3) {
+    fprintf(stderr, "Usage: ./hw4_ex2 <input size> <segment size>\n");
     return 1;
   }
 
-  int segment = atoi(argv[1]);
-  size_t alloc_size = STREAMS * segment * sizeof(DataType);
-  printf("Segment size: %d\n", segment);
+  char *ptr;
+  inputSize = strtol(argv[1], &ptr, 10);
+  segmentSize = strtol(argv[2], &ptr, 10);
 
-  DataType *hostInput1 = (DataType *)malloc(alloc_size);
-  DataType *hostInput2 = (DataType *)malloc(alloc_size);
-  DataType *hostOutput = (DataType *)malloc(alloc_size);
-  DataType *resultRef = (DataType *)malloc(alloc_size);
+  if (segmentSize <= 0 || inputSize % segmentSize != 0) {
+    fprintf(stderr, "Error: segment size must be positive and divide input size\n");
+    return 1;
+  }
+  
 
-  for (int i = 0; i < segment * STREAMS; i++) {
+  hostInput1 = (DataType *)malloc(inputSize * sizeof(DataType));
+  hostInput2 = (DataType *)malloc(inputSize * sizeof(DataType));
+  hostOutput = (DataType *)malloc(inputSize * sizeof(DataType));
+  resultRef = (DataType *)malloc(inputSize * sizeof(DataType));
+
+  for (int i = 0; i < inputSize; i++) {
     hostInput1[i] = rand() / (DataType)RAND_MAX;
     hostInput2[i] = rand() / (DataType)RAND_MAX;
     resultRef[i] = hostInput1[i] + hostInput2[i];
   }
 
-  // Allocate GPU memory
-  DataType *deviceInput1;
-  DataType *deviceInput2;
-  DataType *deviceOutput;
-
-  cudaMalloc(&deviceInput1, alloc_size);
-  cudaMalloc(&deviceInput2, alloc_size);
-  cudaMalloc(&deviceOutput, alloc_size);
+  cudaMalloc(&deviceInput1, inputSize * sizeof(DataType));
+  cudaMalloc(&deviceInput2, inputSize * sizeof(DataType));
+  cudaMalloc(&deviceOutput, inputSize * sizeof(DataType));
   
   // Init streams
-
   cudaStream_t streams[STREAMS];
-  uint streamBytes = segment * sizeof(DataType);
+  uint streamBytes = segmentSize * sizeof(DataType);
 
   for (int i = 0; i < STREAMS; i++) {
       cudaStreamCreate(&streams[i]);
   }
 
+  int numSegments = inputSize / segmentSize;
+  dim3 gridSize((segmentSize + TPB - 1) / TPB);
   dim3 blockSize(TPB);
-  dim3 gridSize((segment + TPB - 1) / TPB);
+
   double startHostToDevice = cpuSecond();
 
-  //@@ Insert code to below to Copy memory to the GPU here
-  for (int i = 0; i < STREAMS; i++) {
-      uint offset = i * segment;
+  for (int i = 0; i < numSegments; i++) {
+      uint offset = i * segmentSize;
       cudaMemcpyAsync(&deviceInput1[offset], &hostInput1[offset], streamBytes,
-                      cudaMemcpyHostToDevice, streams[i]);
+                      cudaMemcpyHostToDevice, streams[i % STREAMS]);
       cudaMemcpyAsync(&deviceInput2[offset], &hostInput2[offset], streamBytes,
-                      cudaMemcpyHostToDevice, streams[i]);
+                      cudaMemcpyHostToDevice, streams[i % STREAMS]);
   }
   totalTimeHostToDevice += cpuSecond() - startHostToDevice;
  
   double startKernel = cpuSecond();
-  //@@ Launch the GPU Kernel here
-  for (int i = 0; i < STREAMS; i++) {
-      uint offset = i * segment;
+  for (int i = 0; i < numSegments; i++) {
+      uint offset = i * segmentSize;
 
-      vecAdd<<<gridSize, blockSize, 0, streams[i]>>>(&deviceInput1[offset],
+      vecAdd<<<gridSize, blockSize, 0, streams[i % STREAMS]>>>(&deviceInput1[offset],
         &deviceInput2[offset],
         &deviceOutput[offset],
-        segment);
+        segmentSize);
   }
   totalTimeKernel += cpuSecond() - startKernel; 
 
   double startDeviceToHost = cpuSecond();
-  //@@ Copy the GPU memory back to the CPU here
-  for (int i = 0; i < STREAMS; i++) {
-      uint offset = i * segment;
+  for (int i = 0; i < numSegments; i++) {
+      uint offset = i * segmentSize;
       cudaMemcpyAsync(&hostOutput[offset], &deviceOutput[offset],
-                      streamBytes, cudaMemcpyDeviceToHost, streams[i]);
+                      streamBytes, cudaMemcpyDeviceToHost, streams[i % STREAMS]);
   }
   totalTimeDeviceToHost += cpuSecond() - startDeviceToHost;
 
@@ -105,14 +119,13 @@ int main(int argc, char **argv) {
 
   // Print the breakdown of times
   printf("Total execution time: %f seconds\n", totalTimeHostToDevice + totalTimeKernel + totalTimeDeviceToHost);
-  printf("Time for Host to Device copy: %f seconds\n", totalTimeHostToDevice);
-  printf("Time for Kernel execution: %f seconds\n", totalTimeKernel);
-  printf("Time for Device to Host copy: %f seconds\n", totalTimeDeviceToHost);
-
+  printf("Host to Device copy: %f seconds\n", totalTimeHostToDevice);
+  printf("Kernel execution: %f seconds\n", totalTimeKernel);
+  printf("Device to Host copy: %f seconds\n", totalTimeDeviceToHost);
 
   // Verify results
   bool match = 1;
-  for (int i = 0; i < segment * STREAMS; i++) {
+  for (int i = 0; i < inputSize; i++) {
       if (abs(hostOutput[i] - resultRef[i]) > 1e-6) {
           printf("Mismatch at index %d: hostOutput[%d] = %f, resultRef[%d] = %f\n", i, i, hostOutput[i], i, resultRef[i]);
           match = 0;
